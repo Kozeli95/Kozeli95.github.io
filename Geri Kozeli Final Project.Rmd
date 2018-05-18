@@ -1,0 +1,139 @@
+---
+title: "How to be Happy"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Data science pipeline as seen through the World Happiness Report
+
+This will be a tutorial on how to curate data, prepare it, perform exploratory data analysis, and then properly analyze said data. We will be using data revolving around happiness ratings around the world to carry out said process.
+
+The data set we are analyzing has been curated from the Sustainable Development Solutions Network's csv regarding world happiness rankings in 2017. To learn more about this organization, you can visit their website at http://unsdsn.org/. The csv was taken from Kaggle.
+
+The sections will be divided as:
+
+1. Data curation, parsing, and management
+
+2. Exploratory data analysis
+
+3. Hypothesis testing
+
+
+
+Part 1: Data curation, parsing, and management - 
+Data curation, parsing, and management is the first step in the data science pipeline. Since the dataset that I selected was already clean, I did not have to do much by way of tidying the data. According to the Kaggle overview however, the only attributes in the data set that do not contribute to a country's overall happiness rating are Whisker.high, Whisker.low, and Dystopia.Residual. Since this is the case, I will be dropping these columns in order to look at only the most relevant columns for this dataset. I will also be renaming the columns to names that make more sense, as their current format is a bit clunky and difficult to understand. 
+```{r}
+library(tidyverse)
+library(tidyr)
+library(stringr)
+library(rvest)
+library(dplyr)
+
+happy_csv <- read_csv("2017.csv")
+
+
+
+happy_csv$Whisker.high <- NULL
+happy_csv$Whisker.low <- NULL
+happy_csv$Dystopia.Residual <- NULL
+
+colnames(happy_csv)[2] <- "Happiness Rank"
+colnames(happy_csv)[3] <- "Happiness Score"
+colnames(happy_csv)[4] <- "GDP Per Capita Contribution"
+colnames(happy_csv)[5] <- "Family Contribution"
+colnames(happy_csv)[6] <- "Life Expectancy Contribution"
+colnames(happy_csv)[7] <- "Freedom Contribution"
+colnames(happy_csv)[8] <- "Generosity Contribution"
+colnames(happy_csv)[9] <- "Gov't Corruption Contribution"
+
+happy_csv %>%
+  slice(1:10)
+
+
+
+
+```
+This is the data frame that we will be working with. The values in the 6 columns after Happiness Score describe the extent to which these factors contribute in evaluating the happiness in each country.
+
+
+Part 2: Exploratory data analysis -
+Exploratory data analysis allows us to observe several aspects of a dataset such as trends, central tendency, skew, spread, outliers, etc.
+
+There are many different variables to consider when conducting EDA on a dataset. For our dataset, we want to find out which factors consistently contribute to their countries' respective happiness levels the most. To answer this question, we will create a series of graphs that plot the relationship between each of the 6 attributes contributing to happiness, and happiness itself.
+
+```{r}
+happy_csv %>%
+  ggplot(aes(x = `GDP Per Capita Contribution`, y = `Happiness Score`)) +
+  geom_point() +
+  ggtitle("Happiness Score vs GDP Per Capita Contribution") +
+  labs(x = "GDP Score", y = "Happiness Score") +
+  geom_smooth(method = lm)
+
+happy_csv %>%
+  ggplot(aes(x = `Family Contribution`, y = `Happiness Score`)) +
+  geom_point() +
+  ggtitle("Happiness Score vs Family Contribution") +
+  labs(x = "Family Score", y = "Happiness Score") +
+  geom_smooth(method = lm)
+
+happy_csv %>%
+  ggplot(aes(x = `Life Expectancy Contribution`, y = `Happiness Score`)) +
+  geom_point() +
+  ggtitle("Happiness Score vs Life Expectancy Contribution") +
+  labs(x = "Life Expectancy Score", y = "Happiness Score") +
+  geom_smooth(method = lm)
+
+happy_csv %>%
+  ggplot(aes(x = `Freedom Contribution`, y = `Happiness Score`)) +
+  geom_point() +
+  ggtitle("Happiness Score vs Freedom Contribution") +
+  labs(x = "Freedom Score", y = "Happiness Score") +
+  geom_smooth(method = lm)
+
+happy_csv %>%
+  ggplot(aes(x = `Generosity Contribution`, y = `Happiness Score`)) +
+  geom_point() +
+  ggtitle("Happiness Score vs Generosity Contribution") +
+  labs(x = "Generosity Score", y = "Happiness Score") +
+  geom_smooth(method = lm)
+
+happy_csv %>%
+  ggplot(aes(x = `Gov't Corruption Contribution`, y = `Happiness Score`)) +
+  geom_point() +
+  ggtitle("Happiness Score vs Gov't Corruption Contribution") +
+  labs(x = "Gov't Corruption Score", y = "Happiness Score") +
+  geom_smooth(method = lm)
+```
+
+It seems as though every graph shows a positive relationship between their respective contributor to happiness and overall happiness. Let's find out which contributor is most closely related to related to overall happiness. We can do this by checking the correlation that each contributor has with overall happiness. Correlation is used to check how two variables vary together. If the correlation is between 0 and 1, they increase/decrease together. If the correlation is between -1 and 0, then they vary in opposite directions. The closer a correlation value is to 0, the weaker the relationship is. It is very important to remember that correlation does not imply causation, as we are simply checking the relationship between two variables, not whether one causes a change in the other.
+
+```{r}
+cor(happy_csv$`Happiness Score`, happy_csv$`GDP Per Capita Contribution`)
+cor(happy_csv$`Happiness Score`, happy_csv$`Family Contribution`)
+cor(happy_csv$`Happiness Score`, happy_csv$`Life Expectancy Contribution`)
+cor(happy_csv$`Happiness Score`, happy_csv$`Freedom Contribution`)
+cor(happy_csv$`Happiness Score`, happy_csv$`Generosity Contribution`)
+cor(happy_csv$`Happiness Score`, happy_csv$`Gov't Corruption Contribution`)
+```
+
+Of every contributor to a nation's overall happiness, it appears as though GDP Per Capita has the strongest, positive, linear relationship with any given nation's overall happiness. While we now know that there is a positive correlation between GDP Per Capita and Happiness Score, we must now conduct a hypothesis test to see if there is indeed a relationship between the two.
+
+Part 3: Hypothesis testing - 
+When it comes to hypothesis testing, there are usually two hypotheses that we work with: the null hypothesis, and the alternative hypothesis. The null hypothesis generally states that there is no relationship between the two variables on which you are running the test, while the alternative hypothesis states the opposite. We will conduct a hypothesis test on GDP Per Capita to see if it is related to Happiness Score.
+
+```{r}
+happy_sample <- happy_csv %>%
+  sample_n(50)
+
+happy_sample
+
+sample_mean <- mean(happy_sample$`GDP Per Capita Contribution`)
+sample_sd <- sd(happy_sample$`GDP Per Capita Contribution`)
+
+pnorm(sample_mean, sample_mean/50, sample_sd, lower.tail = FALSE)
+```
+Since running a hypothesis test on this data gives us a very low p-value, we reject the null hypothesis that there is no relationship between GDP Per Capita and Happiness Score. We can confidently say that the two are related.
+
+Thank you for participating in this tutorial! Please keep in mind that although the data somewhat says otherwise, money still can't buy happiness!
